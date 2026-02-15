@@ -37,10 +37,11 @@ void IGN_ClearShutdownRequest(void)
 }
 
 /* Вызывать из HAL_GPIO_EXTI_Callback */
-void IGN_OnExti(uint16_t gpio_pin)
+void IGN_OnExti(void)
 {
-    if (gpio_pin == IGN_Pin) {
+    //if (gpio_pin == IGN_Pin) {
         /* IGN пропал (Falling) */
         s_shutdown_req = 1;
-    }
+    //}
 }
+
