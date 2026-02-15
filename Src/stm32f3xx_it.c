@@ -234,17 +234,11 @@ void EXTI15_10_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    if (GPIO_Pin == GPIO_PIN_15) { /* PA15 IGN_IN */
-        /* тут логика по уровню: реши active-low/active-high по факту схемы.
-           Обычно проще: "если сейчас IGN не активен — запросить выключение". */
-        g_ign_off_req = 1;
-    }
-
-    if (GPIO_Pin == GPIO_PIN_11) { /* PA11 SPEED_IN */
+    if (GPIO_Pin == GPIO_PIN_15) {        // IGN_IN
+        IGN_OnExti();
+    } else if (GPIO_Pin == GPIO_PIN_11) { // SPEED_IN
         SPEED_OnPulseISR();
-    }
-
-    if (GPIO_Pin == GPIO_PIN_9) { /* PB9 DS3231 */
+    } else if (GPIO_Pin == GPIO_PIN_9) {  // DS3231 INT
         g_ds3231_irq = 1;
     }
 }
