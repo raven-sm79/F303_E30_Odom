@@ -37,7 +37,6 @@
 #include "ds3231.h"
 #include "ntc.h"
 #include "ignition.h"
-#include "odo.h"
 #include "speed.h"
 #include "adc.h"
 #include "vbat.h"
@@ -66,8 +65,6 @@
 /* USER CODE BEGIN PV */
 volatile uint8_t g_ds3231_irq = 0;
 static uint32_t g_last_vbat_ms = 0;
-//static uint16_t  g_pulse_rem = 0;
-//ui_data_t g_data;        /* или сделай static в main */
 volatile uint8_t g_ign_off_req = 0;
 
 static uint8_t is_select_held_at_boot(void)
@@ -107,10 +104,14 @@ int main(void)
     IGN_Init();
     IGN_PowerHold_On();
 
-    NV_Init();
+    ADC_Cache_Init();
+    VBAT_Init();
 
     ui_data_t g_data;
     uint16_t pulse_rem = 0;
+
+    NV_Init();
+    (void)NV_Load(&g_data, &pulse_rem);
 
     /* дефолты */
     memset(&g_data, 0, sizeof(g_data));
@@ -118,12 +119,17 @@ int main(void)
     g_data.svc_spark = 20000;
     g_data.svc_grm   = 60000;
 
-    (void)NV_Load(&g_data, &pulse_rem);
     SPEED_Init(pulse_rem);
 
     UI_Init();
     BTN_Init();
 
+    DS3231_SetAlarmEveryMinute();
+    DS3231_ClearAlarm1Flag();
+    DS3231_ReadTimeDate(&g_data);
+
+
+    ST7789_Init(&hspi1);
     /* дисплей init ... */
     UI_DrawStatic();
     UI_DrawAll(&g_data);
@@ -199,18 +205,14 @@ int main(void)
 	      }
 
 	      /* Выключение зажигания */
-	      if (g_ign_off_req) {
-	          g_ign_off_req = 0;
+	      if (IGN_ShutdownRequested()) {
+	          IGN_ClearShutdownRequest();
 
-	          /* Если IGN активный LOW (транзистор тянет в землю при включенном зажигании),
-	             то “зажигание пропало” = пин стал HIGH */
+	          // антидребезг/проверка реального состояния
 	          if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15) == GPIO_PIN_SET) {
-
-	              //uint16_t rem = SPEED_GetPulseRem();
-	              (void)NV_Save(&g_data, SPEED_GetPulseRem());
-
-	              IGN_PowerHold_Off();     // или прямо HAL_GPIO_WritePin(PA12, RESET)
-	              while (1) { }            // питание сейчас уйдет
+	              NV_Save(&g_data, SPEED_GetPulseRem());
+	              IGN_PowerHold_Off();
+	              while (1) {}
 	          }
 	      }
     /* USER CODE END WHILE */
